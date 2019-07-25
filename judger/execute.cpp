@@ -2,24 +2,14 @@
 This program contains a sandbox, a memory usage monitor, and an input / output redirector.
 Programs under test will be executed by this program.
 */
-#include <stdlib.h>
-#include <sys/resource.h>
-#include <sys/wait.h>
 #include <sys/mman.h>
+#include <sys/ptrace.h>
 #include <sys/reg.h>
-#include <sys/ptrace.h>
-#include <sys/user.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <string.h>
-#include <dirent.h>
-#include <iostream>
-#include <fstream>
-#include <signal.h>
-#include <sstream>
-#include <sys/ptrace.h>
+#include <sys/resource.h>
 #include <sys/syscall.h>
-#include <map>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <bits/stdc++.h>
 
 using namespace std;
 
@@ -58,6 +48,7 @@ int getvirtualmemoryusage(const pid_t pid) {
 }
 
 int main(int argc, char **argv) {
+	// execlp("/bin/mkdir", "mkdir", "123", NULL);
 	if (!strcmp(argv[0], "EXEC_TEST")) {
 		putchar(0);
 		return 0;
