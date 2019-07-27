@@ -48,15 +48,13 @@ int getvirtualmemoryusage(const pid_t pid) {
 }
 
 int main(int argc, char **argv) {
-	// execlp("/bin/mkdir", "mkdir", "123", NULL);
 	if (!strcmp(argv[0], "EXEC_TEST")) {
 		putchar(0);
 		return 0;
 	}
-	stringstream result;
 	int timelimit, memorylimit, syscallbasecount[428] = {0}, syscallcount[428] = {0}, orig_rax, memoryusage = 0, begintime, timespent = 0, childstatus, piper[2], pipew[2], pipee[2], *psystemerror;
 	pid_t childpid, childpid2;
-	char *exec = new char[0], *root = new char[0], *inputfile = new char[0], *outputfile = new char[0], temp[8192];
+	char *exec = new char[0], *root = new char[0], *inputfile = new char[0], *outputfile = new char[0], temp[8192], *incorrectness = new char[0], *retval = new char[0];
 	bool syscall_allowed[428];
 	ifstream fin, inputfin;
 	ofstream fout, outputfout;
@@ -66,7 +64,7 @@ int main(int argc, char **argv) {
 	fout.open(argv[2]);
 	if (system("ls /root >/dev/null 2>/dev/null")) {
 		fout << "PLEASE RUN AS ROOT!";
-		return 1;
+		return -1;
 	}
 	fin.open(argv[1]);
 	fin >> timelimit >> memorylimit >> inputfile >> outputfile >> root >> exec;
@@ -95,63 +93,63 @@ int main(int argc, char **argv) {
 	childpid = fork();
 	if (childpid == -1) {
 		fout << "ERROR" << endl << 1 << endl << 0;
-		return 1;
+		return -1;
 	}
 	if (childpid == 0) {
 		if (chroot(root)) {
 			(*psystemerror) = 1;
-			return 1;
+			return -1;
 		}
-		if (setgid(rand() % 1000000000 + 10000)) { // % 1000000000 + 10000: Provent the GID from equal with a authentic existed GID. The same below.
+		if (setgid(rand() % 1000000000 + 10000)) { // % 1000000000 + 10000: Provent the GID from equal with an authentic existed GID. The same below.
 			(*psystemerror) = 3;
-			return 1;
+			return -1;
 		}
 		if (setuid(rand() % 1000000000 + 10000)) {
 			(*psystemerror) = 4;
-			return 1;
+			return -1;
 		}
 		rlimit rlim;
 		rlim.rlim_cur = 0;
 		rlim.rlim_max = 0;
 		if (setrlimit(RLIMIT_FSIZE, &rlim)) {
 			(*psystemerror) = 5;
-			return 1;
+			return -1;
 		}
 		if (setrlimit(RLIMIT_CORE, &rlim)) {
 			(*psystemerror) = 6;
-			return 1;
+			return -1;
 		}
 		if (setrlimit(RLIMIT_NICE, &rlim)) {
 			(*psystemerror) = 7;
-			return 1;
+			return -1;
 		}
 		if (setrlimit(RLIMIT_LOCKS, &rlim)) {
 			(*psystemerror) = 8;
-			return 1;
+			return -1;
 		}
 		if (setrlimit(RLIMIT_NPROC, &rlim)) {
 			(*psystemerror) = 9;
-			return 1;
+			return -1;
 		}
 		rlim.rlim_cur = 1024 * memorylimit;
 		rlim.rlim_max = 1024 * memorylimit;
 		if (setrlimit(RLIMIT_STACK, &rlim)) {
 			(*psystemerror) = 10;
-			return 1;
+			return -1;
 		}
 		if (ptrace(PTRACE_TRACEME, 0, NULL, NULL)) {
 			(*psystemerror) = 11;
-			return 1;
+			return -1;
 		}
 		execle(argv[0], "EXEC_TEST", NULL, NULL);
 		(*psystemerror) = 12;
-		return 1;
+		return -1;
 	}
 	while (true) {
 		waitpid(childpid, &childstatus, 0);
 		if (WIFSIGNALED(childstatus)) {
 			fout << "ERROR" << endl << 1 << endl << 13;
-			return 1;
+			return -1;
 		}
 		if (WIFEXITED(childstatus)) {
 			break;
@@ -172,7 +170,7 @@ int main(int argc, char **argv) {
 	childpid = fork();
 	if (childpid == -1) {
 		fout << "ERROR" << endl << 2 << endl << 0;
-		return 1;
+		return -1;
 	}
 	if (childpid == 0) {
 		dup2(piper[0], 0);
@@ -186,61 +184,61 @@ int main(int argc, char **argv) {
 		close(pipee[1]);
 		if (chroot(root)) {
 			(*psystemerror) = 1;
-			return 1;
+			return -1;
 		}
 		if (chdir("/")) {
 			(*psystemerror) = 2;
-			return 1;
+			return -1;
 		}
 		if (setgid(rand() % 1000000000 + 10000)) {
 			(*psystemerror) = 3;
-			return 1;
+			return -1;
 		}
 		if (setuid(rand() % 1000000000 + 10000)) {
 			(*psystemerror) = 4;
-			return 1;
+			return -1;
 		}
 		rlimit rlim;
 		rlim.rlim_cur = 0;
 		rlim.rlim_max = 0;
 		if (setrlimit(RLIMIT_FSIZE, &rlim)) {
 			(*psystemerror) = 5;
-			return 1;
+			return -1;
 		}
 		if (setrlimit(RLIMIT_CORE, &rlim)) {
 			(*psystemerror) = 6;
-			return 1;
+			return -1;
 		}
 		if (setrlimit(RLIMIT_NICE, &rlim)) {
 			(*psystemerror) = 7;
-			return 1;
+			return -1;
 		}
 		if (setrlimit(RLIMIT_LOCKS, &rlim)) {
 			(*psystemerror) = 8;
-			return 1;
+			return -1;
 		}
 		if (setrlimit(RLIMIT_NPROC, &rlim)) {
 			(*psystemerror) = 9;
-			return 1;
+			return -1;
 		}
 		rlim.rlim_cur = 1024 * memorylimit;
 		rlim.rlim_max = 1024 * memorylimit;
 		if (setrlimit(RLIMIT_STACK, &rlim)) {
 			(*psystemerror) = 10;
-			return 1;
+			return -1;
 		}
 		if (ptrace(PTRACE_TRACEME, 0, NULL, NULL)) {
 			(*psystemerror) = 11;
-			return 1;
+			return -1;
 		}
 		execle(exec, "", NULL, NULL);
 		(*psystemerror) = 12;
-		return 1;
+		return -1;
 	}
 	childpid2 = fork();
 	if (childpid == -1) {
 		fout << "ERROR" << endl << 2 << endl << 13;
-		return 1;
+		return -1;
 	}
 	if (childpid2 == 0) {
 		usleep((timelimit + 200) * 2000);
@@ -257,7 +255,7 @@ int main(int argc, char **argv) {
 		kill(childpid, SIGKILL);
 		kill(childpid2, SIGKILL);
 		fout << "ERROR" << endl << 2 << endl << 14;
-		return 1;
+		return -1;
 	}
 	while (!inputfin.eof()) {
 		inputfin.read(temp, sizeof(temp));
@@ -265,18 +263,20 @@ int main(int argc, char **argv) {
 	}
 	putc('\n', in);
 	fflush(in);
+	retval = (char *) "null";
+	incorrectness = (char *) "null";
 	while (true) {
 		if (*psystemerror) {
 			kill(childpid2, SIGKILL);
 			fout << "ERROR" << endl << 2 << endl << (*psystemerror);
-			return 1;
+			return -1;
 		}
 		begintime = cpuclock();
 		waitpid(childpid, &childstatus, 0);
 		timespent += cpuclock() - begintime;
 		if (timespent > timelimit * 1000) {
 			kill(childpid2, SIGKILL);
-			result << timespent / 1000 << endl << memoryusage << endl << "TLE" << endl << "TLE";
+			incorrectness = (char *) "\"TLE\"";
 			break;
 		}
 #ifdef __x86_64__
@@ -288,13 +288,13 @@ int main(int argc, char **argv) {
 			memoryusage = max(memoryusage, getvirtualmemoryusage(childpid));
 			if (memoryusage > memorylimit) {
 				kill(childpid2, SIGKILL);
-				result << timespent / 1000 << endl << memoryusage << endl << "MLE" << endl << "MLE";
+				incorrectness = (char *) "\"MLE\"";
 				break;
 			}
 		}
 		if ((childstatus >> 8) != SIGTRAP) {
 			kill(childpid2, SIGKILL);
-			result << timespent / 1000 << endl << memoryusage << endl << childstatus << endl << "RE";
+			incorrectness = (char *) "\"RE\"";
 			break;
 		}
 		if (!syscall_allowed[orig_rax]) {
@@ -302,7 +302,7 @@ int main(int argc, char **argv) {
 			syscallcount[orig_rax]++;
 			if (syscallcount[orig_rax] > syscallbasecount[orig_rax]) {
 				kill(childpid2, SIGKILL);
-				result << timespent / 1000 << endl << memoryusage << endl << "RF" << endl << "RF";
+				incorrectness = (char *) "\"RF\"";
 				break;
 			}
 		}
@@ -312,7 +312,7 @@ int main(int argc, char **argv) {
 		timespent += cpuclock() - begintime;
 		if (timespent > timelimit * 1000) {
 			kill(childpid2, SIGKILL);
-			result << timespent / 1000 << endl << memoryusage << endl << "TLE" << endl << "TLE";
+			incorrectness = (char *) "\"TLE\"";
 			break;
 		}
 #ifdef __x86_64__
@@ -324,7 +324,7 @@ int main(int argc, char **argv) {
 			ptrace(PTRACE_SYSCALL, childpid, NULL, NULL);
 			waitpid(childpid, &childstatus, 0);
 			kill(childpid2, SIGKILL);
-			result << timespent / 1000 << endl << memoryusage << endl << 0 << endl << (childstatus >> 8);
+			retval = (char *) to_string(childstatus >> 8).c_str();
 			break;
 		}
 		ptrace(PTRACE_SYSCALL, childpid, NULL, NULL);
@@ -332,14 +332,14 @@ int main(int argc, char **argv) {
 	if (*psystemerror) {
 		kill(childpid2, SIGKILL);
 		fout << "ERROR" << endl << 2 << endl << (*psystemerror);
-		return 1;
+		return -1;
 	}
-	fout << result.str();
 	ptrace(PTRACE_KILL, childpid, NULL, NULL);
+	fout << "{ \"time\": " << timespent / 1000 << ", \"memoryUsage\": " << memoryusage << ", \"incorrectness\": " << incorrectness << ", \"ret\": " << retval << " }";
 	outputfout.open(outputfile, ios::binary);
 	if (outputfout.fail()) {
 		fout << "ERROR" << endl << 2 << endl << 15;
-		return 1;
+		return -1;
 	}
 	while (fgets(temp, sizeof (temp), out)) {
 		outputfout << temp;

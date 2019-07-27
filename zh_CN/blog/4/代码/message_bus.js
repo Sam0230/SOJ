@@ -15,7 +15,7 @@ message.send(端口号);
 
 接受消息:
 var messageBus = require('./message_bus.js');
-messageBus.receive("B",   // 这个程序的ID。如果A先注册了某个ID，然后B注册了相同的ID，A将收到{ MSGBUS_ERROR: "SERVER_EXITED" }。
+messageBus.receive("B",   // 这个程序的ID。如果A先注册了某个ID，然后B注册了相同的ID，A将收到{ MSGBUS_ERROR: "ID_CONFLICT" }。
  "FAMILY"                 // 这个程序的家族。多个程序可以共享一个家族。
  // 如果同时定义了这两个，程序将收到符合任意一个条件的消息。
  // 如果两个都没定义，程序将收到所有消息。
@@ -67,7 +67,7 @@ module.exports = {
 		jayson.client.tcp({
 			port: port
 		}).request("receive", {
-			id: process.argv[2],
+			id: id,
 			family: family
 		}, function (err, ret) {
 			if (err == "__MESSAGE__BUS__DETECTED__CONFLICT__ozmflqnoenrksjhb__") {
