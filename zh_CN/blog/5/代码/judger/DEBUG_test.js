@@ -13,7 +13,7 @@ var message = new Message("judgeTasksAssign", {
 	input: "10 20",
 	answer: "30",
 	memory: 8192,
-	time: 5000,
+	time: 500,
 	filename: "123454321",
 	diff: "../judger/standard_judge"
 }, function (result) {
