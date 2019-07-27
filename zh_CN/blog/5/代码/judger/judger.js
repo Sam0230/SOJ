@@ -13,20 +13,6 @@ var workerThreads = require("worker_threads"),
 	maxWorkerCount = +configure.maxJudgerCount,
 	portNumber = +configure.daemonListeningPort;
 
-function readFileToArr(fReadName, callback) {
-	var fRead = fs.createReadStream(fReadName);
-	var objReadline = readline.createInterface({
-		input: fRead
-	});
-	var arr = new Array();
-	objReadline.on('line', function (line) {
-		arr.push(line);
-	});
-	objReadline.on('close', function () {
-		callback(arr);
-	});
-}
-
 function rmdirSyncRec(path) {
 	if (fs.existsSync(path)) {
 		fs.readdirSync(path).forEach(function (file, index) {
