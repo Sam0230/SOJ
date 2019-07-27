@@ -57,12 +57,17 @@ jayson.server({
 		callback(undefined, result);
 	},
 	listen: function (arg, callback) {
+		var a;
 		for (var i = 0; i < receiving.length; i++) {
 			if (receiving[i].id == arg.id && receiving[i].listenID != arg.listenID) {
 				receiving[i].callback("__MESSAGE__BUS__STOPPED__ozmflqnoenrksjhb__", undefined);
 				receiving.splice(i, 1);
 			}
+			if (receiving[i].id == arg.id) {
+				a++;
+			}
 		}
+		console.log(a);
 		receiving[receiving.length] = {
 			id: arg.id,
 			listenID: arg.listenID,

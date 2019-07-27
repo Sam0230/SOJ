@@ -3,11 +3,15 @@
 var workerThreads = require("worker_threads"),
 	childProcess = require("child_process"),
 	fs = require("fs"),
+	events = require("events"),
+	eventemitr = new events.EventEmitter(),
 	stop = false,
 	workerCount = 0,
 	messages = [],
-	maxWorkerCount = +fs.readFileSync("../database/configure/max_worker_count").toString(),
-	portNumber = +fs.readFileSync("../database/configure/daemon_listening_port").toString();
+	workers = [],
+	configure = JSON.parse(fs.readFileSync("../database/configure.json").toString()),
+	maxWorkerCount = +configure.maxJudgerCount,
+	portNumber = +configure.daemonListeningPort;
 
 function readFileToArr(fReadName, callback) {
 	var fRead = fs.createReadStream(fReadName);
@@ -45,20 +49,40 @@ if (workerThreads.isMainThread) {
 	}
 	fs.mkdirSync("workdir/" + process.pid);
 	process.on("exit", function () {
+		for (i in workers) {
+			workers[i].terminate();
+		};
 		rmdirSyncRec("workdir/" + process.pid);
+	});
+	process.on("uncaughtException", function (error) {
+		console.log("Judger: Uncaught exception:", error);
+		stop = true;
+		for (i in workers) {
+			workers[i].terminate();
+		};
+		messageBus.stop("judger" + process.pid, undefined, function () {
+			process.exit();
+		}, portNumber);
 	});
 	process.on("SIGINT", function () {
 		stop = true;
+		for (i in workers) {
+			workers[i].terminate();
+		};
 		messageBus.stop("judger" + process.pid, undefined, function () {
 			process.exit();
 		}, portNumber);
 	});
 	process.on("SIGHUP", function () {
 		stop = true;
+		for (i in workers) {
+			workers[i].terminate();
+		};
 		messageBus.stop("judger" + process.pid, undefined, function () {
 			process.exit();
 		}, portNumber);
 	});
+	eventemitr.setMaxListeners(1000);
 	var messageBus = require("./message_bus.js"),
 		Message = messageBus.Message;
 
@@ -70,16 +94,15 @@ if (workerThreads.isMainThread) {
 			throw message.ERROR;
 		}
 		messages[workerCount] = message;
-		process.emit("SOJ_judger_start");
+		eventemitr.emit("SOJ_judger_start");
 	}
-	process.on("SOJ_judger_start", function (message) {
+	eventemitr.on("SOJ_judger_start", function (message) {
 		var workerID = workerCount++;
-		if (workerCount != maxWorkerCount) {
-			messageBus.listen("judger" + process.pid, "judger", start, 1, portNumber);
-		}
-		var worker = new workerThreads.Worker(__filename, {
+		console.log(workerCount, maxWorkerCount);
+		workers[workerID] = new workerThreads.Worker(__filename, {
 			workerData: {
 				id: workerID,
+				judgeID: messages[workerID].content.judgeID,
 				input: messages[workerID].content.input,
 				answer: messages[workerID].content.answer,
 				memory: messages[workerID].content.memory,
@@ -88,14 +111,23 @@ if (workerThreads.isMainThread) {
 				diff: messages[workerID].content.diff
 			}
 		});
-		worker.on("message", function (message) {
+		workers[workerID].on("message", function (message) {
+			if (stop) {
+				return;
+			}
 			console.log(message);
 		});
-		worker.on("error", function (error) {
+		workers[workerID].on("error", function (error) {
+			if (stop) {
+				return;
+			}
 			console.log("Judger: Worker" + workerID + " has an uncaught exception:", error);
 		});
-		worker.on("exit", function () {
-			if (workerCount-- == maxWorkerCount) {
+		workers[workerID].on("exit", function () {
+			if (stop) {
+				return;
+			}
+			if (--workerCount < maxWorkerCount) {
 				messageBus.listen("judger" + process.pid, "judger", start, 1, portNumber);
 			}
 		});
@@ -103,13 +135,13 @@ if (workerThreads.isMainThread) {
 	messageBus.listen("judger" + process.pid, "judger", start, maxWorkerCount, portNumber);
 } else {
 	if (fs.existsSync("workdir/" + process.pid + "/" + workerThreads.workerData.id)) {
-		fs.rmdirSync("workdir/" + process.pid + "/" + workerThreads.workerData.id);
+		rmdirSyncRec("workdir/" + process.pid + "/" + workerThreads.workerData.id);
 	}
 	fs.mkdirSync("workdir/" + process.pid + "/" + workerThreads.workerData.id);
 	fs.writeFileSync("workdir/" + process.pid + "/" + workerThreads.workerData.id + "/input", workerThreads.workerData.input);
 	fs.writeFileSync("workdir/" + process.pid + "/" + workerThreads.workerData.id + "/answer", workerThreads.workerData.answer);
 	fs.writeFileSync("workdir/" + process.pid + "/" + workerThreads.workerData.id + "/executer_parameter", workerThreads.workerData.time + " " + workerThreads.workerData.memory + " workdir/" + process.pid + "/" + workerThreads.workerData.id + "/input workdir/" + process.pid + "/" + workerThreads.workerData.id + "/output workdir/binaries /" + workerThreads.workerData.filename);
-	childProcess.exec("./execute workdir/" + process.pid + "/" + workerThreads.workerData.id + "/executer_parameter workdir/" + process.pid + "/" + workerThreads.workerData.id + "/executerOutput", function () {
+	childProcess.exec("./executer workdir/" + process.pid + "/" + workerThreads.workerData.id + "/executer_parameter workdir/" + process.pid + "/" + workerThreads.workerData.id + "/executerOutput", function () {
 		var executerOutput = fs.readFileSync("workdir/" + process.pid + "/" + workerThreads.workerData.id + "/executerOutput").toString();
 		if (executerOutput == "PLEASE RUN AS ROOT!") {
 			throw "Executer error: " + executerOutput;
@@ -136,6 +168,7 @@ if (workerThreads.isMainThread) {
 				throw "Diff error: " + result;
 			}
 			workerThreads.parentPort.postMessage({
+				judgeID: workerThreads.workerData.id,
 				score: (+result.substr(2)),
 				result: result.substr(0, 2),
 				memoryUsage: executerOutput.memoryUsage,

@@ -40,7 +40,7 @@ messageBus.stop("B",       // ID of target program. It will receive { ERROR: "ST
 ######## If you set function (message) {} as the callback function directly, you will NOT be able to start a worker thread in the callback function !!! ########
 ######## Please use process message event to start a new thread !!!                                                                                     ########
 */
-var jayson, events = require('events'),
+var jayson, processID = Math.random().toString().substr(2) + process.pid + Math.random().toString().substr(2),
 	intervalID,
 	listenerCount = 0;
 
@@ -82,12 +82,10 @@ module.exports = {
 		}
 	},
 	listen: function (id, family, callback, maxCount, port) {
-		var listenID = Math.random().toString().substr(2) + process.pid + Math.random().toString().substr(2),
-			regCount = maxCount,
+		var regCount = maxCount,
 			lastCount = 0,
 			answerCount = 0,
 			stop = false;
-		listenID = process.pid;
 		if (regCount > 750) {
 			regCount = 750;
 			lastCount = maxCount - 750;
@@ -144,7 +142,7 @@ module.exports = {
 					port: port
 				}).request("listen", {
 					id: id,
-					listenID: listenID,
+					processID: processID,
 					family: family
 				}, callback_rpc);
 			}
@@ -158,7 +156,7 @@ module.exports = {
 				port: port
 			}).request("listen", {
 				id: id,
-				listenID: listenID,
+				processID: processID,
 				family: family
 			}, callback_rpc);
 		}
