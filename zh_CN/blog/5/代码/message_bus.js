@@ -84,9 +84,9 @@ module.exports = {
 			lastCount = 0,
 			answerCount = 0,
 			stop = false;
-		if (regCount > 5000) {
-			regCount = 5000;
-			lastCount = maxCount - 5000;
+		if (regCount > 750) {
+			regCount = 750;
+			lastCount = maxCount - 750;
 		}
 		if (listenerCount++ == 0 && listenerCount == 1) {
 			intervalID = setInterval(function () {}, 1000 * 60 * 60 * 24);
