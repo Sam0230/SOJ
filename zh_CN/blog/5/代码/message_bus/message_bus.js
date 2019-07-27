@@ -18,7 +18,7 @@ message.send(PORT_NUMBER); // Daemon listening port
 
 Receive a message from B:
 var messageBus = require("./message_bus.js"), Message = messageBus.Message;
-messageBus.listen("B",     // ID of this program. If A registered an ID first, then B registered the same ID, A will receive { MSGBUS_ERROR: "STOPED" }.
+messageBus.listen("B",     // ID of this program. If A registered an ID first, then B registered the same ID, A will receive { ERROR: "STOPPED" }.
  "FAMILY",                 // Family of this program. Multi programs can share a family.
  // If both is defined, the program will receive messages matches any of them.
  // If nither id nor family is defined, it will receive any message.
@@ -29,13 +29,16 @@ messageBus.listen("B",     // ID of this program. If A registered an ID first, t
 
 Stop B from receiving message:
 var messageBus = require("./message_bus.js"), Message = messageBus.Message;
-messageBus.stop("B",       // ID of target program. It will receive { MSGBUS_ERROR: "STOPED" }.
+messageBus.stop("B",       // ID of target program. It will receive { ERROR: "STOPPED" }.
  "FAMILY",                 // Family of target programs.
  // If both is defined, programs matches any of them will stopp listening.
  // If nither id nor family is defined, all listening will stop.
  function (result) {       // callback function
 	console.log(result);   // result contains ID and family of every programs which stoped listening.
 }, PORT_NUMBER);           // Daemon listening port
+############################################################################ WARNING ###########################################################################
+######## If you set function (message) {} as the callback function directly, you will NOT be able to start a worker thread in the callback function !!! ########
+######## Please use process message event to start a new thread !!!                                                                                     ########
 */
 var jayson, events = require('events'),
 	intervalID,
@@ -79,11 +82,12 @@ module.exports = {
 		}
 	},
 	listen: function (id, family, callback, maxCount, port) {
-		var listenID = pid = Math.random().toString().substr(2) + process.pid + Math.random().toString().substr(2),
+		var listenID = Math.random().toString().substr(2) + process.pid + Math.random().toString().substr(2),
 			regCount = maxCount,
 			lastCount = 0,
 			answerCount = 0,
 			stop = false;
+		listenID = process.pid;
 		if (regCount > 750) {
 			regCount = 750;
 			lastCount = maxCount - 750;
@@ -95,20 +99,10 @@ module.exports = {
 			if (stop) {
 				return;
 			}
-			if (err == "__MESSAGE__BUS__STOPED__ozmflqnoenrksjhb__") {
+			if (err == "__MESSAGE__BUS__STOPPED__ozmflqnoenrksjhb__") {
 				stop = true;
 				callback({
-					MSGBUS_ERROR: "ID_CONFLICT"
-				});
-				if (--listenerCount == 0) {
-					clearInterval(intervalID);
-				}
-				return;
-			}
-			if (err == "__MESSAGE__BUS__STOPED__ozmflqnoenrksjhb__") {
-				stop = true;
-				callback({
-					MSGBUS_ERROR: "STOPED"
+					ERROR: "STOPPED"
 				});
 				if (--listenerCount == 0) {
 					clearInterval(intervalID);
@@ -125,7 +119,7 @@ module.exports = {
 			if (!ret) {
 				stop = true;
 				callback({
-					MSGBUS_ERROR: "STOPED"
+					ERROR: "SERVER_EXITED"
 				});
 				if (--listenerCount == 0) {
 					clearInterval(intervalID);
@@ -135,7 +129,7 @@ module.exports = {
 			if (ret && ret.jsonrpc == "2.0" && ret.id && ret.error && ret.error.code < 0 && ret.error.message == "Internal error") {
 				stop = true;
 				callback({
-					MSGBUS_ERROR: "STOPED"
+					ERROR: "STOPPED"
 				});
 				if (--listenerCount == 0) {
 					clearInterval(intervalID);

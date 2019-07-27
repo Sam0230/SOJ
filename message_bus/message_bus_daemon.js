@@ -59,7 +59,7 @@ jayson.server({
 	listen: function (arg, callback) {
 		for (var i = 0; i < receiving.length; i++) {
 			if (receiving[i].id == arg.id && receiving[i].listenID != arg.listenID) {
-				receiving[i].callback("__MESSAGE__BUS__DETECTED__STOPED__ozmflqnoenrksjhb__", undefined);
+				receiving[i].callback("__MESSAGE__BUS__STOPPED__ozmflqnoenrksjhb__", undefined);
 				receiving.splice(i, 1);
 			}
 		}
@@ -78,7 +78,7 @@ jayson.server({
 					id: receiving[i].id,
 					family: receiving[i].family
 				};
-				receiving[i].callback(undefined, "__MESSAGE__BUS__STOPED__ozmflqnoenrksjhb__", undefined);
+				receiving[i].callback("__MESSAGE__BUS__STOPPED__ozmflqnoenrksjhb__", undefined);
 				receiving.splice(i, 1);
 				i--;
 			}

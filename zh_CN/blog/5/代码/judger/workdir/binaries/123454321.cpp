@@ -1,8 +1,7 @@
-#include <cstdlib>
 #include <iostream>
+#include <fstream>
 using namespace std;
 int main() {
-	malloc(1000000000);
 	int a, b;
 	cin >> a >> b;
 	cout << a + b << endl;
