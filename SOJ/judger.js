@@ -80,11 +80,10 @@ if (workerThreads.isMainThread) {
 			throw message.ERROR;
 		}
 		messages[workerCount] = message;
-		eventemitr.emit("SOJ_judger_start");
+		eventemitr.emit("judger_start");
 	}
-	eventemitr.on("SOJ_judger_start", function (message) {
+	eventemitr.on("judger_start", function (message) {
 		var workerID = workerCount++;
-		console.log(workerCount, maxWorkerCount);
 		workers[workerID] = new workerThreads.Worker(__filename, {
 			workerData: {
 				id: workerID,

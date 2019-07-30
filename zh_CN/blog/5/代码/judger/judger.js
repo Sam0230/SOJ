@@ -84,7 +84,6 @@ if (workerThreads.isMainThread) {
 	}
 	eventemitr.on("SOJ_judger_start", function (message) {
 		var workerID = workerCount++;
-		console.log(workerCount, maxWorkerCount);
 		workers[workerID] = new workerThreads.Worker(__filename, {
 			workerData: {
 				id: workerID,
