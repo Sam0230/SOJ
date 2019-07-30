@@ -264,7 +264,7 @@ int main(int argc, char **argv) {
 		return -1;
 	}
 	childpid2 = fork();
-	if (childpid == -1) {
+	if (childpid2 == -1) {
 		fout << "ERROR" << endl << 2 << endl << 13;
 		munmap(psystemerror, sizeof (*psystemerror));
 		return -1;
