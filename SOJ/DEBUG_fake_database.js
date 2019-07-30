@@ -6,13 +6,16 @@ var messageBus = require("./message_bus.js"),
 	configure = JSON.parse(fs.readFileSync("../database/configure.json").toString()),
 	maxWorkerCount = +configure.maxWorkerCount,
 	portNumber = +configure.daemonListeningPort;
-var message = new Message("Web", {
-	id: "judgeTasksAssigner",
-}, 1, {
-	submitID: "qwe",
-	problemID: "cpp",
-	language: "cpp",
-	code: "#include <iostream>\nusing namespace std;\nint main() {\n	int a, b;\n	cin >> a >> b;\n	cout << a + b << endl;\n	return 0;\n}"
+var message = new Message("judgeTasksAssigner", {
+	family: "judger",
+}, 100, {
+	judgeID: "123",
+	input: "10 20",
+	answer: "30",
+	memory: 8192,
+	time: 500,
+	filename: "123454321",
+	diff: "./standard_judge"
 }, function (result) {
 	console.log(result);
 });
