@@ -1,4 +1,3 @@
 {
-	"daemonListeningPort": 6708,
-	"maxJudgerCount": 3
+	"maxThreadCountPerJudger": 10
 }

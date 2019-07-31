@@ -1,0 +1,8 @@
+{
+	"name": "EasySync",
+	"version": "2019.08.07",
+	"author": "Sam0230",
+	"description": "Turn an async function into an sync function.",
+	"license":"BSD-2-Clause",
+	"gypfile": true
+}
