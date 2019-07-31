@@ -1,1 +1,0 @@
-cmd_Release/obj.target/uvRunOnce.node := g++ -shared -pthread -rdynamic -m64  -Wl,-soname=uvRunOnce.node -o Release/obj.target/uvRunOnce.node -Wl,--start-group Release/obj.target/uvRunOnce/uvRunOnce.o -Wl,--end-group 
