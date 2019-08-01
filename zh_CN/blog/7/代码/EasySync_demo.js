@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 
-var easySync = require("./EasySync");
+var easySync = require("./EasySync"),
+	a = 1,
+	b = 2;
 
-easySync(function (solve) {
+var result = easySync(function (solve) {
 	console.log("Solving. . . ");
 	setTimeout(function () {
 		console.log("Solved!");
-		solve();
+		solve(a + b);
 	}, 2000);
 });
-console.log("This message will display after solved.");
+console.log("Result:", result, "\nThis message will display after solved.");
