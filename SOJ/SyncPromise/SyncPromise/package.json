@@ -1,0 +1,8 @@
+{
+	"name": "SyncPromise",
+	"version": "2019.08.02",
+	"author": "Sam0230",
+	"description": "Add a attach() function to Promise to turn async operation into sync. Also provides a sleep() function",
+	"license":"BSD-3-Clause",
+	"gypfile": true
+}

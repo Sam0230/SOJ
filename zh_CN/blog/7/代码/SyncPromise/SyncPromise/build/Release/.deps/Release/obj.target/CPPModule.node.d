@@ -1,0 +1,1 @@
+cmd_Release/obj.target/CPPModule.node := g++ -shared -pthread -rdynamic -m64  -Wl,-soname=CPPModule.node -o Release/obj.target/CPPModule.node -Wl,--start-group Release/obj.target/CPPModule/cpp_module.o -Wl,--end-group 
