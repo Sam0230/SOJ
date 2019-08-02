@@ -62,9 +62,6 @@ jayson.server({
 				receiving[i].callback("__MESSAGE__BUS__STOPPED__ozmflqnoenrksjhb__", undefined);
 				receiving.splice(i, 1);
 			}
-			if (receiving[i].id == arg.id) {
-				a++;
-			}
 		}
 		receiving[receiving.length] = {
 			id: arg.id,

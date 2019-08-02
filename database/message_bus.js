@@ -56,7 +56,7 @@ try {
 }
 
 module.exports = {
-	Message: function (from, to, maxReceiverCount, content, callback) {
+	Message: function Message(from, to, maxReceiverCount, content, callback) {
 		this.from = from;
 		this.to = to;
 		this.maxReceiverCount = maxReceiverCount;
