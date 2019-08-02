@@ -77,6 +77,7 @@ module.exports.extraPromise = function Promise(executor) {
 		if (ret.status != "pending") {
 			return -2;
 		}
+		process._tickCallback();
 		var timeoutID, reachedTimeout = Buffer.from("0"),
 			detachRequired = Buffer.from("0");
 		if (timeout != undefined && timeout != Infinity) {
@@ -106,10 +107,10 @@ module.exports.extraPromise = function Promise(executor) {
 	return ret;
 }
 
-module.exports.applyGlobalExtrePromise = function applyGlobalExtrePromise(executor) {
+module.exports.applyGlobalExtraPromise = function applyGlobalExtraPromise(executor) {
 	Promise = module.exports.extraPromise;
 }
 
-module.exports.restoreOriginalPromise = function applyGlobalExtrePromise(executor) {
+module.exports.restoreOriginalPromise = function restoreOriginalPromise(executor) {
 	Promise = module.exports.originalPromise;
 }

@@ -6,7 +6,7 @@ var SyncPromise = require("./SyncPromise"),
 
 msleep(500);
 
-SyncPromise.applyGlobalExtrePromise();
+SyncPromise.applyGlobalExtraPromise();
 
 setTimeout(function () {
 	console.log("This message will display before solved.");
