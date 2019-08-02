@@ -18,7 +18,7 @@ module.exports.msleep = msleep = function msleep(milliseconds) {
 	} else {
 		setTimeout(function () {}, 2100000000);
 	}
-	CPPModule(Buffer.from("0"), reachedTimeout, Buffer.from("1"));
+	CPPModule(Buffer.from("0"), reachedTimeout, Buffer.from("1"), process._tickCallback);
 }
 
 module.exports.sleep = sleep = function sleep(seconds) {
@@ -88,7 +88,7 @@ module.exports.extraPromise = function Promise(executor) {
 			detachRequired.write("1");
 		}
 		DetachEmitter.prependListener("detach", requireDetach);
-		CPPModule(detachRequired, reachedTimeout, pending);
+		CPPModule(detachRequired, reachedTimeout, pending, process._tickCallback);
 		if (Boolean(+reachedTimeout.toString())) {
 			DetachEmitter.removeListener('detach', requireDetach);
 			return -3;
