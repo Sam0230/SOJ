@@ -13,7 +13,7 @@ var workerThreads = require("worker_threads"),
 	maxWorkerCount = +configure.maxJudgerCount,
 	portNumber = +configure.daemonListeningPort;
 
-function rmdirSyncRec(path) {
+var rmdirSyncRec = function rmdirSyncRec(path) {
 	if (fs.existsSync(path)) {
 		fs.readdirSync(path).forEach(function (file, index) {
 			var currentPath = path + "/" + file;

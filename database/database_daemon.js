@@ -5,22 +5,29 @@ var messageBus = require("./message_bus.js"),
 	fs = require("fs"),
 	configure = JSON.parse(fs.readFileSync("configure.json").toString()),
 	portNumber = +fs.readFileSync("port").toString();
+
+var rmdirSyncExt = function rmdirSyncExt(path) { // Don't use recursive removing, or it will throw an "ENAMETOOLONG: name too long" error when the directory tree is too deep!
+	var finished;
+	while (!finished) {
+		finished = true;
+		fs.readdirSync(path).forEach(function (file) {
+			var currentPath = path + "/" + file;
+			if (fs.lstatSync(currentPath).isDirectory()) {
+				finished = false;
+				fs.readdirSync(currentPath).forEach(function (file2) {
+					fs.renameSync(currentPath + "/" + file2, path + "/.___REMOVING___" + Math.random().toString().substr(2).replace(/^0/g, '').replace(/e\-.*$/g, '') + "___" + Math.random().toString().substr(2).replace(/^0/g, '').replace(/e\-.*$/g, ''));
+				});
+				fs.rmdirSync(currentPath);
+			} else {
+				fs.unlinkSync(currentPath);
+			}
+		});
+	}
+	fs.rmdirSync(path);
+};
+
 messageBus.listen("database", undefined, function (message) {
 	switch (message.content.request) {
-	case "remove":
-		break;
-	case "mkdir":
-		break;
-	case "isfile":
-		break;
-	case "exist":
-		break;
-	case "query":
-		break;
-	case "copy":
-		break;
-	case "move":
-		break;
 	case "read":
 		var result;
 		try {
@@ -44,6 +51,180 @@ messageBus.listen("database", undefined, function (message) {
 		replyMessage.send(portNumber);
 		break;
 	case "write":
+		var result;
+		try {
+			var oldumask = process.umask(0o000); // Since the mode will be set to (message.content.mode & (~process.umask())) and the umask is 0o022 by default, we need to change it to 0o000 to allow mode 0o777.
+			fs.writeFileSync(message.content.path, message.content.content, {
+				encoding: message.content.encoding,
+				mode: message.content.mode
+			});
+			process.umask(oldumask); // Restore the orininal umask.
+			// The same below in mkdir.
+		} catch (exception) {
+			var replyMessage = new Message("database", {
+				id: message.from,
+			}, 1, {
+				status: "err",
+				result: exception.message
+			}, function () {});
+			replyMessage.send(portNumber);
+			return;
+		}
+		var replyMessage = new Message("database", {
+			id: message.from,
+		}, 1, {
+			status: "ok"
+		}, function () {});
+		replyMessage.send(portNumber);
+		break;
+	case "remove":
+		var result;
+		try {
+			fs.unlinkSync(message.content.path);
+		} catch (exception) {
+			if (exception.code == "EISDIR") {
+				try {
+					rmdirSyncExt(message.content.path);
+				} catch (exception) {
+					var replyMessage = new Message("database", {
+						id: message.from,
+					}, 1, {
+						type: "dir",
+						status: "err",
+						result: exception.message
+					}, function () {});
+					replyMessage.send(portNumber);
+					return;
+				}
+				var replyMessage = new Message("database", {
+					id: message.from,
+				}, 1, {
+					type: "dir",
+					status: "ok"
+				}, function () {});
+				replyMessage.send(portNumber);
+				return;
+			}
+			var replyMessage = new Message("database", {
+				id: message.from,
+			}, 1, {
+				type: "file",
+				status: "err",
+				result: exception.message
+			}, function () {});
+			replyMessage.send(portNumber);
+			return;
+		}
+		var replyMessage = new Message("database", {
+			id: message.from,
+		}, 1, {
+			type: "file",
+			status: "ok"
+		}, function () {});
+		replyMessage.send(portNumber);
+		break;
+	case "mkdir":
+		try {
+			var oldumask = process.umask(0o000);
+			fs.mkdirSync(message.content.path, {
+				mode: message.content.mode,
+				recursive: true
+			});
+			process.umask(oldumask);
+		} catch (exception) {
+			var replyMessage = new Message("database", {
+				id: message.from,
+			}, 1, {
+				status: "err",
+				result: exception.message
+			}, function () {});
+			replyMessage.send(portNumber);
+			return;
+		}
+		var replyMessage = new Message("database", {
+			id: message.from,
+		}, 1, {
+			status: "ok"
+		}, function () {});
+		replyMessage.send(portNumber);
+		break;
+	case "exists":
+		var accessable = true;
+		try {
+			accessable = fs.accessSync(message.content.path, fs.constants.R_OK)
+		} catch (exception) {
+			if (exception.code == "EACCES") {
+				accessable = false;
+			}
+		}
+		if (!accessable) {
+			var replyMessage = new Message("database", {
+				id: message.from,
+			}, 1, {
+				status: "err",
+				result: "EACCES: permission denied, access '" + message.content.path + "'"
+			}, function () {});
+			replyMessage.send(portNumber);
+			return;
+		}
+		var result = fs.existsSync(message.content.path);
+		var replyMessage = new Message("database", {
+			id: message.from,
+		}, 1, {
+			status: "ok",
+			result: result
+		}, function () {});
+		replyMessage.send(portNumber);
+		break;
+	case "isfile":
+		var result;
+		try {
+			result = fs.statSync(message.content.path).isFile();
+		} catch (exception) {
+			var replyMessage = new Message("database", {
+				id: message.from,
+			}, 1, {
+				status: "err",
+				result: exception.message
+			}, function () {});
+			replyMessage.send(portNumber);
+			return;
+		}
+		var replyMessage = new Message("database", {
+			id: message.from,
+		}, 1, {
+			status: "ok",
+			result: result
+		}, function () {});
+		replyMessage.send(portNumber);
+		break;
+	case "query":
+		var result = [];
+		try {
+			fs.readdirSync(message.content.path).forEach(function (file) {
+				result.push(file);
+			});
+		} catch (exception) {
+			var replyMessage = new Message("database", {
+				id: message.from,
+			}, 1, {
+				status: "err",
+				result: exception.message
+			}, function () {});
+			replyMessage.send(portNumber);
+			return;
+		}
+		var replyMessage = new Message("database", {
+			id: message.from,
+		}, 1, {
+			status: "ok",
+			result: result
+		}, function () {});
+		replyMessage.send(portNumber);
+		break;
+	case "copy":
+		break;
+	case "move":
 		break;
 	}
 }, Infinity, portNumber);

@@ -4,7 +4,7 @@ try {
 } catch (err) {
 	if (err.code) {
 		var install_finish;
-		console.log("Please run build.sh to build C++ module first.");
+		console.log("Please run SyncPromise/build.sh to build C++ module first.");
 		process.exit();
 	}
 }
