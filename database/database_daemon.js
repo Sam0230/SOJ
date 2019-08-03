@@ -6,7 +6,7 @@ var messageBus = require("./message_bus.js"),
 	configure = JSON.parse(fs.readFileSync("configure.json").toString()),
 	portNumber = +fs.readFileSync("port").toString();
 
-var rmdirSyncExt = function rmdirSyncExt(path) { // Don't use recursive removing, or it will throw an "ENAMETOOLONG: name too long" error when the directory tree is too deep!
+var rmdirSyncExt = function rmdirSyncExt(path) { // Don't use recursive removing, or it will throw an "ENAMETOOLONG: name too long" error when the directory tree is too deep.
 	var finished;
 	while (!finished) {
 		finished = true;
@@ -26,7 +26,66 @@ var rmdirSyncExt = function rmdirSyncExt(path) { // Don't use recursive removing
 	fs.rmdirSync(path);
 };
 
+var cpdirSync = function cpdirSync(src, dst, dirModeOnMerge) {
+	if (dirModeOnMerge == undefined) {
+		dirModeOnMerge = "override";
+	}
+	if (!fs.existsSync(dst)) {
+		var oldumask = process.umask(0o000);
+		fs.mkdirSync(dst, {
+			mode: fs.lstatSync(src).mode,
+			recursive: true
+		});
+		process.umask(oldumask);
+	} else {
+		if (fs.lstatSync(dst).isFile()) {
+			fs.unlinkSync(dst);
+			var oldumask = process.umask(0o000);
+			fs.mkdirSync(dst, {
+				mode: fs.lstatSync(src).mode,
+				recursive: true
+			});
+			process.umask(oldumask);
+		} else {
+			if (dirModeOnMerge == "override") {
+				fs.chmodSync(dst, fs.lstatSync(src).mode);
+			}
+			if (dirModeOnMerge == "mix") {
+				fs.chmodSync(dst, fs.lstatSync(src).mode | fs.lstatSync(dst).mode);
+			}
+			if (dirModeOnMerge == "overlap") {
+				fs.chmodSync(dst, fs.lstatSync(src).mode & fs.lstatSync(dst).mode);
+			}
+		}
+	}
+	var currentSrc, currentDst;
+	fs.readdirSync(src).forEach(function (file, index) {
+		currentSrc = src + "/" + file;
+		currentDst = dst + "/" + file;
+		if (fs.lstatSync(currentSrc).isDirectory()) {
+			cpdirSync(currentSrc, currentDst, dirModeOnMerge);
+		} else {
+			fs.copyFileSync(currentSrc, currentDst);
+		}
+	});
+};
+
+var chmodSyncRec = function chmodSyncRec(path, mode) {
+	fs.chmodSync(path, mode);
+	fs.readdirSync(path).forEach(function (file, index) {
+		var currentPath = path + "/" + file;
+		if (fs.lstatSync(currentPath).isDirectory()) {
+			chmodSyncRec(currentPath);
+		} else {
+			fs.chmodSync(currentPath, mode);
+		}
+	});
+};
+
 messageBus.listen("database", undefined, function (message) {
+	if (message.ERROR) {
+		throw message.ERROR;
+	}
 	switch (message.content.request) {
 	case "read":
 		var result;
@@ -51,7 +110,6 @@ messageBus.listen("database", undefined, function (message) {
 		replyMessage.send(portNumber);
 		break;
 	case "write":
-		var result;
 		try {
 			var oldumask = process.umask(0o000); // Since the mode will be set to (message.content.mode & (~process.umask())) and the umask is 0o022 by default, we need to change it to 0o000 to allow mode 0o777.
 			fs.writeFileSync(message.content.path, message.content.content, {
@@ -179,7 +237,7 @@ messageBus.listen("database", undefined, function (message) {
 	case "isfile":
 		var result;
 		try {
-			result = fs.statSync(message.content.path).isFile();
+			result = fs.lstatSync(message.content.path).isFile();
 		} catch (exception) {
 			var replyMessage = new Message("database", {
 				id: message.from,
@@ -223,8 +281,68 @@ messageBus.listen("database", undefined, function (message) {
 		replyMessage.send(portNumber);
 		break;
 	case "copy":
+		try {
+			cpdirSync(message.content.src, message.content.dst, message.content.dirModeOnMerge);
+		} catch (exception) {
+			var replyMessage = new Message("database", {
+				id: message.from,
+			}, 1, {
+				status: "err",
+				result: exception.message
+			}, function () {});
+			replyMessage.send(portNumber);
+			return;
+		}
+		var replyMessage = new Message("database", {
+			id: message.from,
+		}, 1, {
+			status: "ok"
+		}, function () {});
+		replyMessage.send(portNumber);
 		break;
 	case "move":
+		try {
+			fs.renameSync(message.content.orig, message.content.dst);
+		} catch (exception) {
+			var replyMessage = new Message("database", {
+				id: message.from,
+			}, 1, {
+				status: "err",
+				result: exception.message
+			}, function () {});
+			replyMessage.send(portNumber);
+			return;
+		}
+		var replyMessage = new Message("database", {
+			id: message.from,
+		}, 1, {
+			status: "ok"
+		}, function () {});
+		replyMessage.send(portNumber);
+		break;
+	case "chmod":
+		try {
+			if (message.content.recursive && fs.lstatSync(message.content.path).isDirectory()) {
+				chmodSyncRec(message.content.path, message.content.mode);
+			} else {
+				fs.chmodSync(message.content.path, message.content.mode);
+			}
+		} catch (exception) {
+			var replyMessage = new Message("database", {
+				id: message.from,
+			}, 1, {
+				status: "err",
+				result: exception.message
+			}, function () {});
+			replyMessage.send(portNumber);
+			return;
+		}
+		var replyMessage = new Message("database", {
+			id: message.from,
+		}, 1, {
+			status: "ok"
+		}, function () {});
+		replyMessage.send(portNumber);
 		break;
 	}
 }, Infinity, portNumber);

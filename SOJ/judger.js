@@ -13,32 +13,36 @@ var workerThreads = require("worker_threads"),
 	maxWorkerCount = +configure.maxJudgerCount,
 	portNumber = +configure.daemonListeningPort;
 
-var rmdirSyncRec = function rmdirSyncRec(path) {
-	if (fs.existsSync(path)) {
-		fs.readdirSync(path).forEach(function (file, index) {
+var rmdirSyncExt = function rmdirSyncExt(path) { // Don't use recursive removing, or it will throw an "ENAMETOOLONG: name too long" error when the directory tree is too deep.
+	var finished;
+	while (!finished) {
+		finished = true;
+		fs.readdirSync(path).forEach(function (file) {
 			var currentPath = path + "/" + file;
 			if (fs.lstatSync(currentPath).isDirectory()) {
-				rmdirSyncRec(currentPath);
+				finished = false;
+				fs.readdirSync(currentPath).forEach(function (file2) {
+					fs.renameSync(currentPath + "/" + file2, path + "/.___REMOVING___" + Math.random().toString().substr(2).replace(/^0/g, '').replace(/e\-.*$/g, '') + "___" + Math.random().toString().substr(2).replace(/^0/g, '').replace(/e\-.*$/g, ''));
+				});
+				fs.rmdirSync(currentPath);
 			} else {
 				fs.unlinkSync(currentPath);
 			}
 		});
-		fs.rmdirSync(path);
-	} else {
-		throw path + " doesn't exist.";
 	}
+	fs.rmdirSync(path);
 };
 
 if (workerThreads.isMainThread) {
 	if (fs.existsSync("workdir/" + process.pid)) {
-		rmdirSyncRec("workdir/" + process.pid);
+		rmdirSyncExt("workdir/" + process.pid);
 	}
 	fs.mkdirSync("workdir/" + process.pid);
 	process.on("exit", function () {
 		for (i in workers) {
 			workers[i].terminate();
 		};
-		rmdirSyncRec("workdir/" + process.pid);
+		rmdirSyncExt("workdir/" + process.pid);
 	});
 	process.on("uncaughtException", function (error) {
 		console.log("Judger: Uncaught exception:", error);
@@ -120,7 +124,7 @@ if (workerThreads.isMainThread) {
 	messageBus.listen("judger" + process.pid, "judger", start, maxWorkerCount, portNumber);
 } else {
 	if (fs.existsSync("workdir/" + process.pid + "/" + workerThreads.workerData.id)) {
-		rmdirSyncRec("workdir/" + process.pid + "/" + workerThreads.workerData.id);
+		rmdirSyncExt("workdir/" + process.pid + "/" + workerThreads.workerData.id);
 	}
 	fs.mkdirSync("workdir/" + process.pid + "/" + workerThreads.workerData.id);
 	fs.writeFileSync("workdir/" + process.pid + "/" + workerThreads.workerData.id + "/input", workerThreads.workerData.input);
@@ -144,7 +148,7 @@ if (workerThreads.isMainThread) {
 				additionalInformation: null,
 				ret: null
 			});
-			rmdirSyncRec("workdir/" + process.pid + "/" + workerThreads.workerData.id);
+			rmdirSyncExt("workdir/" + process.pid + "/" + workerThreads.workerData.id);
 			return;
 		}
 		childProcess.exec(workerThreads.workerData.diff + " workdir/" + process.pid + "/" + workerThreads.workerData.id + "/input workdir/" + process.pid + "/" + workerThreads.workerData.id + "/output workdir/" + process.pid + "/" + workerThreads.workerData.id + "/answer workdir/" + process.pid + "/" + workerThreads.workerData.id + "/result workdir/" + process.pid + "/" + workerThreads.workerData.id + "/additionalInformation", function () {
@@ -161,7 +165,7 @@ if (workerThreads.isMainThread) {
 				additionalInformation: (fs.existsSync("workdir/" + process.pid + "/" + workerThreads.workerData.id + "/additionalInformation")) ? (fs.readFileSync("workdir/" + process.pid + "/" + workerThreads.workerData.id + "/additionalInformation").toString()) : (""),
 				ret: executerOutput.ret
 			});
-			rmdirSyncRec("workdir/" + process.pid + "/" + workerThreads.workerData.id);
+			rmdirSyncExt("workdir/" + process.pid + "/" + workerThreads.workerData.id);
 		});
 	});
 }
