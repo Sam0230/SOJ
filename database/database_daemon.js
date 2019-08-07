@@ -28,7 +28,7 @@ var rmdirSyncExt = function rmdirSyncExt(path) { // Don't use recursive removing
 
 var cpdirSync = function cpdirSync(src, dst, dirModeOnMerge) {
 	if (dirModeOnMerge == undefined) {
-		dirModeOnMerge = "override";
+		dirModeOnMerge = "overlap";
 	}
 	if (!fs.existsSync(dst)) {
 		var oldumask = process.umask(0o000);
@@ -234,10 +234,31 @@ messageBus.listen("database", undefined, function (message) {
 		}, function () {});
 		replyMessage.send(portNumber);
 		break;
-	case "isfile":
-		var result;
+	case "type":
+		var result = {};
 		try {
-			result = fs.lstatSync(message.content.path).isFile();
+			var stat = fs.lstatSync(message.content.path);
+			if (stat.isSymbolicLink()) {
+				result.type = "symbolicLink";
+				try {
+					stat = fs.statSync(message.content.path);
+				} catch (exception) {
+					if (exception.code == "ENOENT") {
+						result.type = "brokenSymbolicLink";
+					} else {
+						if (exception.code == "ELOOP") {
+							result.type = "loopSymbolicLink";
+						} else {
+							throw exception;
+						}
+					}
+				}
+				if (result.type == "symbolicLink") {
+					result.dstType = stat.isFile() ? "file" : "directory";
+				}
+			} else {
+				result.type = stat.isFile() ? "file" : "directory";
+			}
 		} catch (exception) {
 			var replyMessage = new Message("database", {
 				id: message.from,
@@ -282,7 +303,15 @@ messageBus.listen("database", undefined, function (message) {
 		break;
 	case "copy":
 		try {
-			cpdirSync(message.content.src, message.content.dst, message.content.dirModeOnMerge);
+			if (fs.lstatSync(message.content.src).isDirectory()) {
+				cpdirSync(message.content.src, message.content.dst, message.content.dirModeOnMerge);
+			} else {
+				if (fs.lstatSync(message.content.src).isSymbolicLink()) {
+					fs.linkSync(fs.readlinkSync(src), dst);
+				} else {
+					fs.copyFileSync(message.content.src, message.content.dst);
+				}
+			}
 		} catch (exception) {
 			var replyMessage = new Message("database", {
 				id: message.from,
@@ -302,7 +331,7 @@ messageBus.listen("database", undefined, function (message) {
 		break;
 	case "move":
 		try {
-			fs.renameSync(message.content.orig, message.content.dst);
+			fs.renameSync(message.content.src, message.content.dst);
 		} catch (exception) {
 			var replyMessage = new Message("database", {
 				id: message.from,
@@ -322,11 +351,53 @@ messageBus.listen("database", undefined, function (message) {
 		break;
 	case "chmod":
 		try {
-			if (message.content.recursive && fs.lstatSync(message.content.path).isDirectory()) {
+			if (fs.statSync(message.content.path).isDirectory()) {
 				chmodSyncRec(message.content.path, message.content.mode);
 			} else {
 				fs.chmodSync(message.content.path, message.content.mode);
 			}
+		} catch (exception) {
+			var replyMessage = new Message("database", {
+				id: message.from,
+			}, 1, {
+				status: "err",
+				result: exception.message
+			}, function () {});
+			replyMessage.send(portNumber);
+			return;
+		}
+		var replyMessage = new Message("database", {
+			id: message.from,
+		}, 1, {
+			status: "ok"
+		}, function () {});
+		replyMessage.send(portNumber);
+		break;
+	case "readlink":
+		var result;
+		try {
+			result = fs.readlinkSync(src);
+		} catch (exception) {
+			var replyMessage = new Message("database", {
+				id: message.from,
+			}, 1, {
+				status: "err",
+				result: exception.message
+			}, function () {});
+			replyMessage.send(portNumber);
+			return;
+		}
+		var replyMessage = new Message("database", {
+			id: message.from,
+		}, 1, {
+			status: "ok",
+			result: result
+		}, function () {});
+		replyMessage.send(portNumber);
+		break;
+	case "mklink":
+		try {
+			fs.linkSync(message.content.path, message.content.link);
 		} catch (exception) {
 			var replyMessage = new Message("database", {
 				id: message.from,

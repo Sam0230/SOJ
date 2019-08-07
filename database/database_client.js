@@ -128,7 +128,7 @@ module.exports = {
 		p.attach();
 		return p.result.content;
 	},
-	isfile: function (path) {
+	type: function (path) {
 		var id = "DATABASE_CLIENT_" + Math.random().toString().substr(2).replace(/^0/g, '').replace(/e\-.*$/g, '');
 		var p = new Promise(function (resolve, reject, attachable, detach) {
 			messageBus.listen(id, undefined, function (result) {
@@ -138,7 +138,7 @@ module.exports = {
 		var message = new Message(id, {
 				id: "database",
 			}, 1, {
-				request: "isfile",
+				request: "type",
 				path: path
 			},
 			function (received) {
@@ -171,7 +171,31 @@ module.exports = {
 		message.send(portNumber);
 		p.attach();
 		return p.result.content;
+	},
+	copy: function (src, dst, dirModeOnMerge) {
+		var id = "DATABASE_CLIENT_" + Math.random().toString().substr(2).replace(/^0/g, '').replace(/e\-.*$/g, '');
+		var p = new Promise(function (resolve, reject, attachable, detach) {
+			messageBus.listen(id, undefined, function (result) {
+				resolve(result);
+			}, 1, portNumber);
+		});
+		var message = new Message(id, {
+				id: "database",
+			}, 1, {
+				request: "copy",
+				src: src,
+				dst: dst,
+				dirModeOnMerge: dirModeOnMerge
+			},
+			function (received) {
+				if (received.length != 1) {
+					throw "Database: Cannot connect with daemon!";
+				}
+			});
+		message.send(portNumber);
+		p.attach();
+		return p.result.content;
 	}
 }
 
-console.log(module.exports.query("a"));
+console.log(module.exports.type("456", "a"));
