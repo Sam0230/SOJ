@@ -1,3 +1,6 @@
 {
-	"maxThreadCountPerJudger": 10
+	"judge": {
+		"maxThreadCountPerJudger": 10,
+		"blockedHeaders": ["/usr/include/c\\+\\+/9\\.1\\.0/x86_64\\-pc\\-linux-gnu/bits/extc++\\.h"]
+	}
 }

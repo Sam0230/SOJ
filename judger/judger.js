@@ -2,6 +2,7 @@
 
 var workerThreads = require("worker_threads"),
 	childProcess = require("child_process"),
+	database = require("database"),
 	fs = require("fs"),
 	events = require("events"),
 	eventemitr = new events.EventEmitter(),
@@ -9,8 +10,8 @@ var workerThreads = require("worker_threads"),
 	workerCount = 0,
 	messages = [],
 	workers = [],
-	configure = JSON.parse(fs.readFileSync("../database/configure.json").toString()),
-	maxWorkerCount = +configure.maxThreadCountPerJudger,
+	configure = JSON.parse(database.read("configure.json")),
+	maxWorkerCount = +configure.judge.maxThreadCountPerJudger,
 	portNumber = +fs.readFileSync("port").toString();
 
 var rmdirSyncExt = function rmdirSyncExt(path) { // Don't use recursive removing, or it will throw an "ENAMETOOLONG: name too long" error when the directory tree is too deep.
