@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 
-var messageBus = require("./message_bus.js"),
+var messageBus = require("message_bus"),
 	Message = messageBus.Message,
 	fs = require("fs"),
-	configure = JSON.parse(fs.readFileSync("configure.json").toString()),
 	portNumber = +fs.readFileSync("port").toString();
 
 var rmdirSyncExt = function rmdirSyncExt(path) { // Don't use recursive removing, or it will throw an "ENAMETOOLONG: name too long" error when the directory tree is too deep.
@@ -70,14 +69,14 @@ var cpdirSync = function cpdirSync(src, dst, dirModeOnMerge) {
 	});
 };
 
-var chmodSyncRec = function chmodSyncRec(path, mode) {
-	fs.chmodSync(path, mode);
+var chmodSyncRec = function chmodSyncRec(path, fileMode, dirMode) {
+	fs.chmodSync(path, dirMode);
 	fs.readdirSync(path).forEach(function (file, index) {
 		var currentPath = path + "/" + file;
 		if (fs.lstatSync(currentPath).isDirectory()) {
-			chmodSyncRec(currentPath);
+			chmodSyncRec(currentPath, fileMode, dirMode);
 		} else {
-			fs.chmodSync(currentPath, mode);
+			fs.chmodSync(currentPath, fileMode);
 		}
 	});
 };
@@ -352,9 +351,9 @@ messageBus.listen("database", undefined, function (message) {
 	case "chmod":
 		try {
 			if (fs.statSync(message.content.path).isDirectory()) {
-				chmodSyncRec(message.content.path, message.content.mode);
+				chmodSyncRec(message.content.path, message.content.fileMode, message.content.dirMode);
 			} else {
-				fs.chmodSync(message.content.path, message.content.mode);
+				fs.chmodSync(message.content.path, message.content.fileMode);
 			}
 		} catch (exception) {
 			var replyMessage = new Message("database", {

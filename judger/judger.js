@@ -10,8 +10,8 @@ var workerThreads = require("worker_threads"),
 	messages = [],
 	workers = [],
 	configure = JSON.parse(fs.readFileSync("../database/configure.json").toString()),
-	maxWorkerCount = +configure.maxJudgerCount,
-	portNumber = +configure.daemonListeningPort;
+	maxWorkerCount = +configure.maxThreadCountPerJudger,
+	portNumber = +fs.readFileSync("port").toString();
 
 var rmdirSyncExt = function rmdirSyncExt(path) { // Don't use recursive removing, or it will throw an "ENAMETOOLONG: name too long" error when the directory tree is too deep.
 	var finished;
@@ -45,6 +45,9 @@ if (workerThreads.isMainThread) {
 		rmdirSyncExt("workdir/" + process.pid);
 	});
 	process.on("uncaughtException", function (error) {
+		if (stop) {
+			return;
+		}
 		console.log("Judger: Uncaught exception:", error);
 		stop = true;
 		for (i in workers) {
@@ -73,7 +76,7 @@ if (workerThreads.isMainThread) {
 		}, portNumber);
 	});
 	eventemitr.setMaxListeners(1000);
-	var messageBus = require("./message_bus.js"),
+	var messageBus = require("message_bus"),
 		Message = messageBus.Message;
 
 	function start(message) { // I found that if we set function (message) {} as the callback function directly, the worker thread won't start. So, we need to use the message
